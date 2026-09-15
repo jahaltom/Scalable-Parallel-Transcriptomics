@@ -149,13 +149,13 @@ salmon:
 ## 5. Dry run
 
 ```bash
-snakemake -n -p
+snakemake -s Snakefile -n
 ```
 
 ## 6. Run
 
 ```bash
-snakemake -j 25 -s Snakefile --use-conda --rerun-incomplete --cluster "sbatch -t 05:00:00 -c {threads} -N 1"
+snakemake -s Snakefile --executor slurm -j 25 --use-conda --rerun-incomplete
 ```
 
 On a cluster, use your site's Snakemake executor/profile.
