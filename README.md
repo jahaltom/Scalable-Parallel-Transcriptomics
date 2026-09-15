@@ -47,14 +47,14 @@ mv reference/gencode.v36.transcripts.fa.gz
 
 generate tx2gene
 
-``
+```
 awk '$3=="transcript" {
     match($0, /gene_id "([^"]+)"/, g);
     match($0, /transcript_id "([^"]+)"/, t);
     if (g[1] != "" && t[1] != "")
         print t[1] "\t" g[1]
 }' OFS='\t' gencode.v36.annotation.gtf \
-> reference/tx2gene.tsv
+>  /tx2gene.tsv
 
 ```
 - genome FASTA
