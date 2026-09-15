@@ -58,11 +58,11 @@ tar -xzf reference/GRCh38.d1.vd1.fa.tar.gz \
 gunzip reference/gencode.v36.annotation.gtf.gz
 gunzip reference/gencode.v36.transcripts.fa.gz
 
-generate tx2gene
+
 ########################################################
 # generate tx2gene
 ########################################################
-```
+
 awk '$3=="transcript" {
     match($0, /gene_id "([^"]+)"/, g);
     match($0, /transcript_id "([^"]+)"/, t);
