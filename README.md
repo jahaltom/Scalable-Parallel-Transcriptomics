@@ -155,7 +155,7 @@ snakemake -n -p
 ## 6. Run
 
 ```bash
-snakemake -j 25 -s Snakefile --use-conda --cores 16
+snakemake -j 25 -s Snakefile --use-conda --rerun-incomplete --cluster "sbatch -t 05:00:00 -c {threads} -N 1"
 ```
 
 On a cluster, use your site's Snakemake executor/profile.
