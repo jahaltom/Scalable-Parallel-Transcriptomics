@@ -70,6 +70,10 @@ awk '$3=="transcript" {
         print t[1] "\t" g[1]
 }' OFS='\t' reference/gencode.v36.annotation.gtf \
 >  reference/tx2gene.tsv
+
+
+
+rm reference/GRCh38.d1.vd1.fa.tar.gz
 ```
 
 
