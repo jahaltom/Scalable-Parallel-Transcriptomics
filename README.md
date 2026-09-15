@@ -155,7 +155,7 @@ snakemake -n -p
 ## 6. Run
 
 ```bash
-snakemake --use-conda --cores 16
+snakemake -j 25 -s Snakefile --use-conda --cores 16
 ```
 
 On a cluster, use your site's Snakemake executor/profile.
