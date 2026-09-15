@@ -1,5 +1,0 @@
-sample	type	layout	read1	read2	sra	bam
-FASTQ_PE	fastq	PE	/path/to/sample_R1.fastq.gz	/path/to/sample_R2.fastq.gz		
-FASTQ_SE	fastq	SE	/path/to/sample.fastq.gz			
-SRA_PE	sra	PE			SRR0000001	
-BAM_PE	bam	PE				/path/to/sample.bam
