@@ -44,7 +44,17 @@ wget -O reference/gencode.v36.annotation.gtf.gz https://api.gdc.cancer.gov/data/
 #  gencode.v36.transcripts.fa.gz       
 wget -O reference/gencode.v36.transcripts.fa.gz https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_36/gencode.v36.transcripts.fa.gz
 
-gunzip reference/*
+########################################################
+# DECOMPRESS
+########################################################
+
+# Extract .tar.gz genome archive
+tar -xzf reference/GRCh38.d1.vd1.fa.tar.gz \
+    -C reference/
+
+# Decompress ordinary .gz files
+gunzip reference/gencode.v36.annotation.gtf.gz
+gunzip reference/gencode.v36.transcripts.fa.gz
 ```
 
 
