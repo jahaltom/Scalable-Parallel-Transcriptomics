@@ -1,0 +1,26 @@
+samples: "samples.tsv"
+
+reference:
+  genome: "/path/to/Homo_sapiens.GRCh38.dna.primary_assembly.fa"
+  transcripts: "/path/to/Homo_sapiens.GRCh38.cdna.all.fa"
+  tx2gene: "/path/to/tx2gene.tsv"
+
+# true: build a decoy-aware Salmon index from genome + transcripts
+# false: use the already-existing directory specified by salmon_index
+build_index: true
+salmon_index: "resources/salmon_index"
+
+threads:
+  index: 12
+  salmon: 8
+  fastqc: 2
+  bam_to_fastq: 4
+  sra_to_fastq: 6
+
+salmon:
+  libtype: "A"
+  validateMappings: true
+  seqBias: true
+  gcBias: true
+  # Add extra Salmon quant arguments here, e.g. "--numBootstraps 30"
+  extra: ""
