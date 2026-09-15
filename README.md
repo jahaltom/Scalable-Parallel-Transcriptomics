@@ -31,7 +31,9 @@ The workflow itself uses per-rule Conda environments.
 You need:
 
 ```
-
+########################################################
+# Download
+########################################################
 mkdir reference
 
 # GRCh38.d1.vd1.fa.tar.gz:
@@ -55,11 +57,11 @@ tar -xzf reference/GRCh38.d1.vd1.fa.tar.gz \
 # Decompress ordinary .gz files
 gunzip reference/gencode.v36.annotation.gtf.gz
 gunzip reference/gencode.v36.transcripts.fa.gz
-```
-
 
 generate tx2gene
-
+########################################################
+# generate tx2gene
+########################################################
 ```
 awk '$3=="transcript" {
     match($0, /gene_id "([^"]+)"/, g);
@@ -68,8 +70,11 @@ awk '$3=="transcript" {
         print t[1] "\t" g[1]
 }' OFS='\t' reference/gencode.v36.annotation.gtf \
 >  reference/tx2gene.tsv
-
 ```
+
+
+
+
 - genome FASTA
 - transcriptome FASTA
 - transcript-to-gene table (`tx2gene.tsv`)
