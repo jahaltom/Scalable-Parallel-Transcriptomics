@@ -35,16 +35,16 @@ You need:
 mkdir reference
 
 # GRCh38.d1.vd1.fa.tar.gz:
-wget https://api.gdc.cancer.gov/data/254f697d-310d-4d7d-a27b-27fbf767a834
-mv 254f697d-310d-4d7d-a27b-27fbf767a834 reference/GRCh38.d1.vd1.fa.tar.gz
+wget -O reference/GRCh38.d1.vd1.fa.tar.gz https://api.gdc.cancer.gov/data/254f697d-310d-4d7d-a27b-27fbf767a834
 
 # gencode.v36.annotation.gtf.gz:
-wget https://api.gdc.cancer.gov/data/be002a2c-3b27-43f3-9e0f-fd47db92a6b5
-mv be002a2c-3b27-43f3-9e0f-fd47db92a6b5 reference/gencode.v36.annotation.gtf.gz
+wget -O reference/gencode.v36.annotation.gtf.gz https://api.gdc.cancer.gov/data/be002a2c-3b27-43f3-9e0f-fd47db92a6b5
+
 
 #  gencode.v36.transcripts.fa.gz       
-wget https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_36/gencode.v36.transcripts.fa.gz
-mv reference/gencode.v36.transcripts.fa.gz
+wget -O reference/gencode.v36.transcripts.fa.gz https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_36/gencode.v36.transcripts.fa.gz
+
+gunzip reference/*
 ```
 
 
@@ -56,7 +56,7 @@ awk '$3=="transcript" {
     match($0, /transcript_id "([^"]+)"/, t);
     if (g[1] != "" && t[1] != "")
         print t[1] "\t" g[1]
-}' OFS='\t' gencode.v36.annotation.gtf \
+}' OFS='\t' reference/gencode.v36.annotation.gtf \
 >  reference/tx2gene.tsv
 
 ```
