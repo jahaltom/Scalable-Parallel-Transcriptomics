@@ -6,5 +6,5 @@
 #SBATCH --mail-type=ALL
 
 
-module load R
+module load R/4.6.1
 Rscript scripts/DGE.r
