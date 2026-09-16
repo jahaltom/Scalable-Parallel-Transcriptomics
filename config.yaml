@@ -23,3 +23,31 @@ salmon:
   gcBias: true
   # Add extra Salmon quant arguments here, e.g. "--numBootstraps 30"
   extra: ""
+
+
+
+
+##########################################
+# DESeq2
+##########################################
+OrgDb: org.Mm.eg.db
+
+
+
+
+#Gene column in Gene_Level_Raw_Counts.txt
+gene_id_type: ENSEMBL
+
+enrichr_databases:
+  - KEGG_2021_Mouse
+  - GO_Biological_Process_2023
+  - GO_Cellular_Component_2023
+  - GO_Molecular_Function_2023
+
+#Tearment column in metadata.txt
+comparisons:
+  - group1: "NZB-Treg"
+    group2: "Treg"
+
+  - group1: "2h-NZB-Treg"
+    group2: "2h-Treg"
