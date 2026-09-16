@@ -127,6 +127,20 @@ results/
     ├── gene_counts.tsv
     ├── gene_tpm.tsv
     └── gene_length.tsv
+
+Gene_Level_Raw_Counts.txt
+
+DESeq2_results/
+├── QC/
+├── PCA/
+├── DGE/
+├── Volcano/
+├── Heatmaps/
+├── GSEA/
+├── DESeq2_Normalized_Counts.txt
+├── VST_Counts.txt
+├── sessionInfo.txt
+└── .complete
 ```
 
 Intermediate normalized FASTQs are placed under `work/fastq/`.
