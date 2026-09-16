@@ -50,26 +50,53 @@ txi <- tximport(
 
 dir.create(outdir, recursive = TRUE, showWarnings = FALSE)
 
-write.table(
+############################################################
+# CONVERT MATRICES TO DATA FRAMES WITH EXPLICIT GENE COLUMN
+############################################################
+
+counts_df <- data.frame(
+  Gene = rownames(txi$counts),
   txi$counts,
+  check.names = FALSE
+)
+
+tpm_df <- data.frame(
+  Gene = rownames(txi$abundance),
+  txi$abundance,
+  check.names = FALSE
+)
+
+length_df <- data.frame(
+  Gene = rownames(txi$length),
+  txi$length,
+  check.names = FALSE
+)
+
+
+############################################################
+# WRITE OUTPUT
+############################################################
+
+write.table(
+  counts_df,
   file = file.path(outdir, "gene_counts.tsv"),
   sep = "\t",
   quote = FALSE,
-  col.names = NA
+  row.names = FALSE
 )
 
 write.table(
-  txi$abundance,
+  tpm_df,
   file = file.path(outdir, "gene_tpm.tsv"),
   sep = "\t",
   quote = FALSE,
-  col.names = NA
+  row.names = FALSE
 )
 
 write.table(
-  txi$length,
+  length_df,
   file = file.path(outdir, "gene_length.tsv"),
   sep = "\t",
   quote = FALSE,
-  col.names = NA
+  row.names = FALSE
 )
