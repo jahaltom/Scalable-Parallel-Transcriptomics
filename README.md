@@ -20,7 +20,7 @@ The workflow supports single-end (SE) and paired-end (PE) samples.
 A minimal option is:
 
 ```bash
-conda create -n snakemake -c conda-forge -c bioconda snakemake
+conda create -n snakemake -c conda-forge -c bioconda snakemake=7.32.4
 conda activate snakemake
 ```
 
@@ -155,7 +155,7 @@ snakemake -s Snakefile -n
 ## 6. Run
 
 ```bash
-snakemake -s Snakefile --executor slurm -j 25 --use-conda --rerun-incomplete
+snakemake -j 24 -s Snakefile --latency-wait 60 --cluster "sbatch -t 05:00:00 -c {threads} -N 1"
 ```
 
 On a cluster, use your site's Snakemake executor/profile.
