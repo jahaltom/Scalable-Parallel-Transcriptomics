@@ -55,19 +55,19 @@ dir.create(outdir, recursive = TRUE, showWarnings = FALSE)
 ############################################################
 
 counts_df <- data.frame(
-  Gene = rownames(txi$counts),
+  GeneID_Ver = rownames(txi$counts),
   txi$counts,
   check.names = FALSE
 )
 
 tpm_df <- data.frame(
-  Gene = rownames(txi$abundance),
+  GeneID_Ver = rownames(txi$abundance),
   txi$abundance,
   check.names = FALSE
 )
 
 length_df <- data.frame(
-  Gene = rownames(txi$length),
+  GeneID_Ver = rownames(txi$length),
   txi$length,
   check.names = FALSE
 )
