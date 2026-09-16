@@ -99,7 +99,7 @@ If you already have a Salmon index, set `salmon_index` in `config.yaml` and set 
 Required columns:
 
 ```text
-sample    type    layout    read1    read2    sra    bam
+sample    type    layout    read1    read2    sra    bam    Treatment
 ```
 
 Examples are included.
@@ -113,13 +113,14 @@ Rules:
 - Leave unused fields blank.
 - Sample names must be unique.
 
-```
-sample      type    layout  read1                 read2                 sra          bam
-Patient1    fastq   PE      Patient1_R1.fastq.gz  Patient1_R2.fastq.gz
-Patient2    sra     PE                                                    SRR123456
-Patient3    bam     PE                                                                 Patient3.bam
-Patient4    fastq   SE      Patient4.fastq.gz
-```
+| sample   | type  | layout | read1                 | read2                 | sra       | bam          | Treatment    |
+|----------|-------|--------|-----------------------|-----------------------|-----------|--------------|--------------|
+| Patient1 | fastq | PE     | Patient1_R1.fastq.gz  | Patient1_R2.fastq.gz  |           |              |   Tumor      |
+| Patient2 | sra   | PE     |                       |                       | SRR123456 |              |   Control    |
+| Patient3 | bam   | PE     |                       |                       |           | Patient3.bam |              |
+| Patient4 | fastq | SE     | Patient4.fastq.gz     |                       |           |              |              |
+
+
 For BAM input, reads are extracted with `samtools fastq`. This is appropriate for ordinary genome-aligned BAMs because Salmon is then run from the reconstructed FASTQs rather than treating a genomic BAM as a transcriptome alignment.
 
 ## 4. Configure
