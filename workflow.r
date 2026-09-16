@@ -137,11 +137,11 @@ print(table(metadata$Treatment))
 
 
 ############################################################
-# 6. CHECK THAT ALL METADATA SampleIDS EXIST
+# 6. CHECK THAT ALL METADATA sample EXIST
 ############################################################
 
 missing_samples <- setdiff(
-    metadata$SampleID,
+    metadata$sample,
     colnames(counts)
 )
 
@@ -149,7 +149,7 @@ if(length(missing_samples) > 0){
 
     stop(
         paste(
-            "These metadata SampleIDs are missing from the count matrix:",
+            "These metadata sample are missing from the count matrix:",
             paste(missing_samples, collapse = ", ")
         )
     )
@@ -164,7 +164,7 @@ counts <- counts[
     ,
     c(
         "Gene",
-        metadata$SampleID
+        metadata$sample
     )
 ]
 
@@ -177,7 +177,7 @@ counts <- counts[
     ,
     c(
         "Gene",
-        metadata$SampleID
+        metadata$sample
     )
 ]
 
@@ -218,7 +218,7 @@ if(any(counts %% 1 != 0)){
 # 11. SET UP METADATA FOR DESEQ2
 ############################################################
 
-rownames(metadata) <- metadata$SampleID
+rownames(metadata) <- metadata$sample
 
 metadata <- metadata[
     colnames(counts),
@@ -258,14 +258,14 @@ write.csv(
 library_sizes <- colSums(counts)
 
 library_df <- data.frame(
-    SampleID = names(library_sizes),
+    sample = names(library_sizes),
     Reads = as.numeric(library_sizes)
 )
 
 library_df <- left_join(
     library_df,
     metadata,
-    by = "SampleID"
+    by = "sample"
 )
 
 write.csv(
@@ -278,7 +278,7 @@ write.csv(
 p <- ggplot(
     library_df,
     aes(
-        x = reorder(SampleID, Reads),
+        x = reorder(sample, Reads),
         y = Reads,
         fill = Treatment
     )
@@ -369,14 +369,14 @@ dds <- DESeq(dds)
 ############################################################
 
 size_factor_df <- data.frame(
-    SampleID = names(sizeFactors(dds)),
+    sample = names(sizeFactors(dds)),
     SizeFactor = sizeFactors(dds)
 )
 
 size_factor_df <- left_join(
     size_factor_df,
     metadata,
-    by = "SampleID"
+    by = "sample"
 )
 
 write.csv(
@@ -507,7 +507,7 @@ annotation <- data.frame(
     Group = metadata$Treatment
 )
 
-rownames(annotation) <- metadata$SampleID
+rownames(annotation) <- metadata$sample
 
 
 png(
