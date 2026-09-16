@@ -402,9 +402,6 @@ rule deSeq:
         done="DESeq2_results/.complete"
     shell:
         r"""
-        awk 'BEGIN{{FS=OFS="\t"}} NR==1{{$1="Gene"}} NR>1{{sub(/\.[0-9]+$/, "", $1)}} 1' \
-            {input.counts:q} > Gene_Level_Raw_Counts.txt
-
         module load R
         Rscript DGE.r
 
