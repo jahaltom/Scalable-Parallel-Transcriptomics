@@ -30,24 +30,32 @@ salmon:
 ##########################################
 # DESeq2
 ##########################################
-OrgDb: org.Mm.eg.db
-
+#OrgDb: org.Mm.eg.db
+OrgDb: org.Hs.eg.db
 
 
 
 #Gene column in Gene_Level_Raw_Counts.txt
 gene_id_type: ENSEMBL
 
+#enrichr_databases:
+#  - KEGG_2021_Mouse
+#  - GO_Biological_Process_2023
+# - GO_Cellular_Component_2023
+# - GO_Molecular_Function_2023
+
 enrichr_databases:
-  - KEGG_2021_Mouse
+  - KEGG_2021_Human
+  - WikiPathway_2023_Human
+  - Reactome_2022
   - GO_Biological_Process_2023
   - GO_Cellular_Component_2023
   - GO_Molecular_Function_2023
 
 #Tearment column in metadata.txt
 comparisons:
-  - group1: "NZB-Treg"
-    group2: "Treg"
+  - group1: "EZH2 enzymatic inhibitor EPZ-6438"
+    group2: "VHL-inactive control compound 6286"
 
-  - group1: "2h-NZB-Treg"
-    group2: "2h-Treg"
+  - group1: "DMSO"
+    group2: "VHL-inactive control compound 6286"
