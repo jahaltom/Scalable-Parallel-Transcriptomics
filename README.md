@@ -146,6 +146,18 @@ snakemake --use-conda --cores 8 results/salmon/YOUR_SAMPLE/quant.sf
 Then inspect `results/salmon/YOUR_SAMPLE/logs/salmon_quant.log`.
 
 ## Stand alone DGE.r
+
+Needs Gene_Level_Raw_Counts.txt and metadata.tsv
+
+Gene_Level_Raw_Counts.txt:
+
+
+| Gene            | SRR..  |
+|-----------------|--------|
+| ENSG00000223972 | fastq  |
+
 ```
 sbatch scripts/DGE.sh
 ```
+
+
