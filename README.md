@@ -31,8 +31,13 @@ The workflow itself uses per-rule Conda environments.
 You need:
 
 
-- genome FASTA
-- transcriptome FASTA
+- genome FASTA: GRCh38.d1.vd1.fa
+  - This reference genome is used by the GDC for all sequencing and array based analyses. This file is composed of the following sequences:
+    - GCA_000001405.15_GRCh38_no_alt_analysis_set
+    - Sequence Decoys (GenBank Accession GCA_000786075)
+    - Virus Sequences
+- transcriptome FASTA: gencode.v36.transcripts.fa
+- Annotation file: gencode.v36.annotation.gtf 
 - transcript-to-gene table (`tx2gene.tsv`)
 
 `tx2gene.tsv` must contain two tab-separated columns:
