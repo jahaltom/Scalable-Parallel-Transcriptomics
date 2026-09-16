@@ -2,7 +2,7 @@
 # COMPLETE DESEQ2 WORKFLOW
 # Input:
 #   Gene_Level_Raw_Counts.txt
-#   metadata.txt
+#   metadata.tsv
 ############################################################
 
 
@@ -120,7 +120,7 @@ print(head(counts))
 ############################################################
 
 metadata <- read.delim(
-    "metadata.txt",
+    "metadata.tsv",
     header = TRUE,
     stringsAsFactors = FALSE,
     check.names = FALSE
