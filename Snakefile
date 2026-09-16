@@ -391,20 +391,19 @@ rule prepare_deseq_counts:
         awk 'BEGIN{{FS=OFS="\t"}} NR==1{{$1="Gene"}} NR>1{{sub(/\.[0-9]+$/, "", $1)}} 1' \
             {input:q} > {output:q}
         """
+
 # -------------------------------------------------------------------------
 # DESEQ2
 # -------------------------------------------------------------------------
 
 rule deSeq:
     input:
-        counts="results/matrices/gene_counts.tsv"
+        counts="Gene_Level_Raw_Counts.txt"
     output:
         done="DESeq2_results/.complete"
     shell:
         r"""
         module load R
-        Rscript DGE.r
-
+        Rscript scripts/DGE.r
         touch {output.done}
         """
-
