@@ -156,7 +156,7 @@ snakemake -s Snakefile -n
 ## 6. Run
 
 ```bash
-snakemake -j 24 -s Snakefile --latency-wait 60 --cluster "sbatch -t 05:00:00 -c {threads} -N 1"
+snakemake -j 24 -s Snakefile --use-conda --rerun-incomplete --latency-wait 60 --cluster "sbatch -t 05:00:00 -c {threads} -N 1"
 ```
 
 On a cluster, use your site's Snakemake executor/profile.
