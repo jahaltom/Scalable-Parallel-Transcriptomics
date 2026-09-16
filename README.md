@@ -94,7 +94,7 @@ The workflow builds a **decoy-aware Salmon index** by concatenating the transcri
 
 If you already have a Salmon index, set `salmon_index` in `config.yaml` and set `build_index: false`.
 
-## 3. Edit samples.tsv
+## 3. Edit metadata.tsv
 
 Required columns:
 
@@ -127,7 +127,7 @@ For BAM input, reads are extracted with `samtools fastq`. This is appropriate fo
 Edit `config.yaml`:
 
 ```yaml
-samples: "samples.tsv"
+samples: "metadata.tsv"
 
 reference:
   genome: "/path/to/Homo_sapiens.GRCh38.dna.primary_assembly.fa"
