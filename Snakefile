@@ -70,7 +70,8 @@ rule all:
         "results/matrices/gene_counts.tsv",
         "results/matrices/gene_tpm.tsv",
         "results/matrices/gene_length.tsv",
-        "results/multiqc/multiqc_report.html"
+        "results/multiqc/multiqc_report.html",
+        "DESeq2_results/.complete"
 
 # -------------------------------------------------------------------------
 # Reference / Salmon index
@@ -375,3 +376,38 @@ rule tximport:
           --salmon-dir results/salmon \
           --outdir results/matrices
         """
+
+# -------------------------------------------------------------------------
+# PREPARE COUNTS FOR DESEQ2
+# -------------------------------------------------------------------------
+
+rule prepare_deseq_counts:
+    input:
+        "results/matrices/gene_counts.tsv"
+    output:
+        "Gene_Level_Raw_Counts.txt"
+    shell:
+        r"""
+        awk 'BEGIN{{FS=OFS="\t"}} NR==1{{$1="Gene"}} NR>1{{sub(/\.[0-9]+$/, "", $1)}} 1' \
+            {input:q} > {output:q}
+        """
+# -------------------------------------------------------------------------
+# DESEQ2
+# -------------------------------------------------------------------------
+
+rule deSeq:
+    input:
+        counts="results/matrices/gene_counts.tsv"
+    output:
+        done="DESeq2_results/.complete"
+    shell:
+        r"""
+        awk 'BEGIN{{FS=OFS="\t"}} NR==1{{$1="Gene"}} NR>1{{sub(/\.[0-9]+$/, "", $1)}} 1' \
+            {input.counts:q} > Gene_Level_Raw_Counts.txt
+
+        module load R
+        Rscript DGE.r
+
+        touch {output.done}
+        """
+
