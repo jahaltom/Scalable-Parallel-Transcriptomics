@@ -403,7 +403,7 @@ rule deSeq:
         done="DESeq2_results/.complete"
     shell:
         r"""
-        module load R
+        module load R/4.6.1
         Rscript scripts/DGE.r
         touch {output.done}
         """
