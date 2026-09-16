@@ -144,3 +144,8 @@ snakemake --use-conda --cores 8 results/salmon/YOUR_SAMPLE/quant.sf
 ```
 
 Then inspect `results/salmon/YOUR_SAMPLE/logs/salmon_quant.log`.
+
+## Stand alone DGE.r
+```
+sbatch scripts/DGE.sh
+```
