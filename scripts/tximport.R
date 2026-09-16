@@ -45,7 +45,8 @@ txi <- tximport(
   files,
   type = "salmon",
   tx2gene = tx2gene,
-  countsFromAbundance = "no"
+  countsFromAbundance = "no",
+  dropInfReps = TRUE
 )
 
 dir.create(outdir, recursive = TRUE, showWarnings = FALSE)
