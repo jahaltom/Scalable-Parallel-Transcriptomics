@@ -10,7 +10,7 @@ samples = pd.read_csv(SAMPLES_FILE, sep="\t", dtype=str).fillna("")
 required_cols = {"sample", "type", "layout", "read1", "read2", "sra", "bam"}
 missing = required_cols - set(samples.columns)
 if missing:
-    raise ValueError(f"samples.tsv is missing columns: {sorted(missing)}")
+    raise ValueError(f"metadata.tsv is missing columns: {sorted(missing)}")
 
 if samples["sample"].duplicated().any():
     dup = samples.loc[samples["sample"].duplicated(), "sample"].tolist()
