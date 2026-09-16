@@ -1,4 +1,4 @@
-samples: "samples.tsv"
+samples: "metadata.tsv"
 
 reference:
   genome: "reference/GRCh38.d1.vd1.fa"
