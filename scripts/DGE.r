@@ -30,7 +30,8 @@
 #     "tibble",
 #     "pheatmap",
 #     "enrichR",
-#     "readxl"
+#     "readxl",
+      "msigdbr"
 # ))
 
 library(yaml)
@@ -66,7 +67,7 @@ OrgDb <- get(
 
 
 
-
+library(msigdbr)
 library(biomaRt)
 library(readxl)
 library(DESeq2)
@@ -422,6 +423,63 @@ write.table(
     quote = FALSE,
     col.names = NA
 )
+
+
+
+############################################################
+# HALLMARK PATHWAY HEATMAPS
+############################################################
+
+dir.create(
+    "DESeq2_results/Heatmaps/Hallmark",
+    recursive = TRUE,
+    showWarnings = FALSE
+)
+
+HALLMARK_PATHWAYS <- c(
+    "HALLMARK_WNT_BETA_CATENIN_SIGNALING",
+    "HALLMARK_OXIDATIVE_PHOSPHORYLATION",
+    "HALLMARK_HEDGEHOG_SIGNALING",
+    "HALLMARK_TGF_BETA_SIGNALING",
+    "HALLMARK_NOTCH_SIGNALING",
+    "HALLMARK_HYPOXIA"
+)
+
+# Retrieve Hallmark gene sets for the analysis species
+species_name <- if (
+    ORGDB_PACKAGE == "org.Mm.eg.db"
+) "Mus musculus" else "Homo sapiens"
+
+hallmark_db <- msigdbr(
+    species = species_name,
+    collection = "H"
+)
+
+# Map expression gene IDs to symbols
+if (GENE_ID_TYPE == "SYMBOL") {
+
+    gene_symbols <- rownames(vst_matrix)
+
+} else {
+
+    gene_map <- AnnotationDbi::mapIds(
+        OrgDb,
+        keys = rownames(vst_matrix),
+        column = "SYMBOL",
+        keytype = GENE_ID_TYPE,
+        multiVals = "first"
+    )
+
+    gene_symbols <- as.character(gene_map)
+}
+
+names(gene_symbols) <- rownames(vst_matrix)
+
+annotation_hallmark <- data.frame(
+    Treatment = metadata$Treatment,
+    row.names = rownames(metadata)
+)
+
 
 
 ############################################################
@@ -1110,9 +1168,7 @@ run_comparison <- function(group1, group2){
             missing_labels
         ]
         
-        rownames(hm) <- make.unique(
-            heatmap_labels
-        )
+        rownames(hm) <- make.unique(heatmap_labels)
     
         # Subset annotation
         annotation_comp <- annotation[
@@ -1151,6 +1207,111 @@ run_comparison <- function(group1, group2){
 
 
 
+
+    ########################################################
+    # HALLMARK HEATMAPS WITH SIGNIFICANCE MARKERS
+    ########################################################
+    
+    comparison_samples <- rownames(metadata)[
+        metadata$Treatment %in% c(group1, group2)
+    ]
+    
+    hallmark_dir <- file.path(
+        "DESeq2_results/Heatmaps/Hallmark",
+        comparison_name
+    )
+    
+    dir.create(
+        hallmark_dir,
+        recursive = TRUE,
+        showWarnings = FALSE
+    )
+    
+    for (pathway in HALLMARK_PATHWAYS) {
+    
+        pathway_symbols <- unique(
+            hallmark_db$gene_symbol[
+                hallmark_db$gs_name == pathway
+            ]
+        )
+    
+        matched_genes <- names(gene_symbols)[
+            !is.na(gene_symbols) &
+            gene_symbols %in% pathway_symbols
+        ]
+    
+        if (length(matched_genes) < 2) next
+    
+        hm <- vst_matrix[
+            matched_genes,
+            comparison_samples,
+            drop = FALSE
+        ]
+    
+        # Remove zero-variance genes
+        keep <- apply(hm, 1, var) > 0
+        keep[is.na(keep)] <- FALSE
+        hm <- hm[keep, , drop = FALSE]
+    
+        if (nrow(hm) < 2) next
+    
+        # Match DESeq2 results by original gene ID
+        gene_stats <- res_df[
+            match(rownames(hm), res_df$Gene),
+            ,
+            drop = FALSE
+        ]
+    
+        sig_marker <- rep("", nrow(hm))
+    
+        sig_marker[
+            !is.na(gene_stats$padj) &
+            gene_stats$padj < 0.05
+        ] <- " *"
+    
+        sig_marker[
+            !is.na(gene_stats$padj) &
+            gene_stats$padj < 0.05 &
+            !is.na(gene_stats$log2FoldChange) &
+            abs(gene_stats$log2FoldChange) >= 1
+        ] <- " **"
+    
+        labels <- gene_symbols[rownames(hm)]
+    
+        missing <- is.na(labels) | labels == ""
+        labels[missing] <- rownames(hm)[missing]
+    
+        rownames(hm) <- make.unique(
+            paste0(labels, sig_marker)
+        )
+    
+        annotation_comp <- data.frame(
+            Treatment = metadata[comparison_samples, "Treatment"],
+            row.names = comparison_samples
+        )
+    
+        png(
+            file.path(hallmark_dir, paste0(pathway, ".png")),
+            width = 2500,
+            height = max(1800, nrow(hm) * 35),
+            res = 250
+        )
+    
+        pheatmap(
+            hm,
+            scale = "row",
+            annotation_col = annotation_comp,
+            cluster_cols = FALSE,
+            show_rownames = TRUE,
+            fontsize_row = 6,
+            main = paste0(
+                pathway, " - ", comparison_name,
+                "\n* padj < 0.05; ** padj < 0.05 & |log2FC| >= 1"
+            )
+        )
+    
+        dev.off()
+    }
 
 
 
