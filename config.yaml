@@ -36,7 +36,7 @@ OrgDb: org.Hs.eg.db
 
 
 #Gene column in Gene_Level_Raw_Counts.txt
-gene_id_type: ENSEMBL
+gene_id_type: SYMBOL # ENSEMBL
 
 #enrichr_databases:
 #  - KEGG_2021_Mouse
@@ -54,28 +54,5 @@ enrichr_databases:
 
 # Treatment column in metadata.txt
 comparisons:
-
- ############################################################
-  # 22Rv1 vs VCaP — BASELINE CELL-LINE DIFFERENCE
-  ############################################################
-
-  # Baseline metabolic differences between cell lines
-  - group1: "22Rv1_DMSO"
-    group2: "VCaP_DMSO"
-
-
-  ############################################################
-  # 22Rv1 vs VCaP — SAME TREATMENT
-  ############################################################
-
-  # Cell-line difference under EZH2 inhibition
-  - group1: "22Rv1_EZH2 enzymatic inhibitor EPZ-6438"
-    group2: "VCaP_EZH2 enzymatic inhibitor EPZ-6438"
-
-  # Cell-line difference under EZH2 degradation
-  - group1: "22Rv1_EZH2 PROTAC degrader PROTAC-6272"
-    group2: "VCaP_EZH2 PROTAC degrader PROTAC-6272"
-
-  # Cell-line difference under VHL-inactive control
-  - group1: "22Rv1_VHL-inactive control compound 6286"
-    group2: "VCaP_VHL-inactive control compound 6286"
+  - group1: "HIV"
+    group2: "CONTROL"
