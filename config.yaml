@@ -53,9 +53,85 @@ enrichr_databases:
 #  - GO_Molecular_Function_2023
 
 # Treatment column in metadata.txt
+
 comparisons:
-  - group1: "HIV"
-    group2: "CONTROL"
+
+  ##################################################
+  # A. APP EFFECTS WITHIN EACH GENOTYPE
+  ##################################################
+
+  # ND6
+  - group1: "ND6_1x"
+    group2: "ND6_0"
+  - group1: "ND6_2x"
+    group2: "ND6_0"
+  - group1: "ND6_2x"
+    group2: "ND6_1x"
+
+  # NZB
+  - group1: "NZB_1x"
+    group2: "NZB_0"
+  - group1: "NZB_2x"
+    group2: "NZB_0"
+  - group1: "NZB_2x"
+    group2: "NZB_1x"
+
+  # B6J
+  - group1: "B6J_1x"
+    group2: "B6J_0"
+
+  # 129
+  - group1: "129_1x"
+    group2: "129_0"
+
+
+  ##################################################
+  # B. GENOTYPE EFFECTS WITHOUT APP (0)
+  ##################################################
+
+  - group1: "ND6_0"
+    group2: "NZB_0"
+  - group1: "ND6_0"
+    group2: "B6J_0"
+  - group1: "ND6_0"
+    group2: "129_0"
+
+  - group1: "NZB_0"
+    group2: "B6J_0"
+  - group1: "NZB_0"
+    group2: "129_0"
+
+  - group1: "B6J_0"
+    group2: "129_0"
+
+
+  ##################################################
+  # C. GENOTYPE EFFECTS WITH ONE APP COPY (1x)
+  ##################################################
+
+  - group1: "ND6_1x"
+    group2: "NZB_1x"
+  - group1: "ND6_1x"
+    group2: "B6J_1x"
+  - group1: "ND6_1x"
+    group2: "129_1x"
+
+  - group1: "NZB_1x"
+    group2: "B6J_1x"
+  - group1: "NZB_1x"
+    group2: "129_1x"
+
+  - group1: "B6J_1x"
+    group2: "129_1x"
+
+
+  ##################################################
+  # D. GENOTYPE EFFECTS WITH TWO APP COPIES (2x)
+  ##################################################
+
+  - group1: "ND6_2x"
+    group2: "NZB_2x"
+
 
 # DESeq2 covariates
 # To run without covariates: covariates: []
