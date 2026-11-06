@@ -35,11 +35,27 @@
 # ))
 
 library(yaml)
+
 config <- read_yaml("config.yaml")
+
 ORGDB_PACKAGE <- config$OrgDb
 GENE_ID_TYPE <- config$gene_id_type
 ENRICHR_DATABASES <- unlist(config$enrichr_databases)
 COMPARISONS <- config$comparisons
+
+# Optional covariates from config.yaml
+COVARIATES <- unlist(config$covariates, use.names = FALSE)
+
+if (is.null(COVARIATES)) {
+    COVARIATES <- character(0)
+}
+
+COVARIATES <- unique(as.character(COVARIATES))
+
+if ("Treatment" %in% COVARIATES) {
+    stop("Do not include Treatment in covariates; it is added automatically.")
+}
+
 ############################################################
 # LOAD ORGANISM DATABASE
 ############################################################
@@ -66,7 +82,7 @@ OrgDb <- get(
 )
 
 
-
+library(httr)
 library(msigdbr)
 library(biomaRt)
 library(readxl)
@@ -227,7 +243,81 @@ metadata <- metadata[
     drop = FALSE
 ]
 
+
+############################################################
+# PREPARE DESEQ2 COVARIATES
+############################################################
+
 metadata$Treatment <- factor(metadata$Treatment)
+
+# Verify all requested covariates exist
+missing_covariates <- setdiff(
+    COVARIATES,
+    colnames(metadata)
+)
+
+if (length(missing_covariates) > 0) {
+    stop(
+        "Covariates missing from metadata.tsv: ",
+        paste(missing_covariates, collapse = ", ")
+    )
+}
+
+# Verify no missing values in model variables
+model_variables <- c("Treatment", COVARIATES)
+
+for (variable in model_variables) {
+
+    if (any(is.na(metadata[[variable]]))) {
+        stop(
+            "Missing values found in model variable: ",
+            variable
+        )
+    }
+}
+
+# Convert categorical covariates to factors.
+# Leave numerical covariates numeric.
+for (variable in COVARIATES) {
+
+    if (is.character(metadata[[variable]]) ||
+        is.logical(metadata[[variable]])) {
+
+        metadata[[variable]] <- factor(metadata[[variable]])
+    }
+
+    if (is.factor(metadata[[variable]]) &&
+        nlevels(droplevels(metadata[[variable]])) < 2) {
+
+        stop(
+            "Categorical covariate has fewer than 2 levels: ",
+            variable
+        )
+    }
+
+    if (is.numeric(metadata[[variable]]) &&
+        length(unique(metadata[[variable]])) < 2) {
+
+        stop(
+            "Numeric covariate has no variation: ",
+            variable
+        )
+    }
+}
+
+############################################################
+# BUILD DESEQ2 DESIGN FORMULA
+############################################################
+
+design_variables <- c(COVARIATES, "Treatment")
+
+DESEQ2_DESIGN <- stats::reformulate(
+    design_variables
+)
+
+cat("\nDESeq2 design formula:\n")
+print(DESEQ2_DESIGN)
+
 
 
 ############################################################
@@ -351,11 +441,37 @@ write.table(
 # 16. CREATE DESEQ2 OBJECT
 ############################################################
 
+
+############################################################
+# CREATE DESEQ2 OBJECT WITH CONFIGURABLE COVARIATES
+############################################################
+
 dds <- DESeqDataSetFromMatrix(
     countData = round(counts_filtered),
     colData = metadata,
-    design = ~ Treatment
+    design = DESEQ2_DESIGN
 )
+
+# Check that the design matrix is full rank
+design_matrix <- model.matrix(
+    DESEQ2_DESIGN,
+    data = as.data.frame(colData(dds))
+)
+
+if (qr(design_matrix)$rank < ncol(design_matrix)) {
+    stop(
+        "DESeq2 design matrix is not full rank. ",
+        "Covariates may be perfectly confounded with Treatment ",
+        "or with each other."
+    )
+}
+
+cat("\nDESeq2 design matrix dimensions:\n")
+print(dim(design_matrix))
+
+cat("\nDESeq2 model terms:\n")
+print(colnames(design_matrix))
+
 
 
 ############################################################
@@ -711,171 +827,264 @@ if(ANALYSIS_SPECIES == "human"){
             `Major Pathways` = `Major Pathways`
         )
 
-} else if(ANALYSIS_SPECIES == "mouse"){
 
-########################################################
-# MOUSE: MAP HUMAN GENES TO MOUSE ORTHOLOGS
-########################################################
+} else if (ANALYSIS_SPECIES == "mouse") {
 
-cat(
-    "\nMapping human pathway genes to mouse orthologs...\n"
-)
+    ########################################################
+    # MOUSE: MAP HUMAN GENES TO MOUSE ORTHOLOGS
+    # Direct Ensembl BioMart API (bypasses biomaRt bug)
+    ########################################################
 
-human_mart <- biomaRt::useEnsembl(
-    biomart = "genes",
-    dataset = "hsapiens_gene_ensembl",
-    mirror = "asia"
-)
+    cat("\nMapping human pathway genes to mouse orthologs...\n")
 
-# mouse_mart <- biomaRt::useEnsembl(
-#     biomart = "genes",
-#     dataset = "mmusculus_gene_ensembl"
-# )
+    biomart_url <- "https://asia.ensembl.org/biomart/martservice"
 
-########################################################
-# MAP HUMAN SYMBOLS -> MOUSE SYMBOLS
-#
-# Query one human gene at a time to avoid BioMart's
-# "attributes from multiple attribute pages" error.
-########################################################
+    output_dir <- "DESeq2_results/Heatmaps/Major_Pathways"
 
-human_genes <- unique(pathway_genes$HumanGene)
+    dir.create(
+        output_dir,
+        recursive = TRUE,
+        showWarnings = FALSE
+    )
 
-ortholog_list <- lapply(
-    human_genes,
-    function(human_gene){
+    ########################################################
+    # FUNCTION: QUERY ONE HUMAN GENE
+    ########################################################
 
-        mouse_gene <- tryCatch(
+    get_mouse_ortholog <- function(human_gene, max_attempts = 3) {
 
-            biomaRt::getBM(
-                attributes = "mmusculus_homolog_associated_gene_name",
-                filters = "hgnc_symbol",
-                values = human_gene,
-                mart = human_mart
-            ),
+        human_gene <- trimws(as.character(human_gene))
 
-            error = function(e){
+        # Escape XML-sensitive characters
+        human_gene_xml <- gsub("&", "&amp;", human_gene, fixed = TRUE)
+        human_gene_xml <- gsub('"', "&quot;", human_gene_xml, fixed = TRUE)
+        human_gene_xml <- gsub("<", "&lt;", human_gene_xml, fixed = TRUE)
+        human_gene_xml <- gsub(">", "&gt;", human_gene_xml, fixed = TRUE)
 
-                cat(
-                    "BioMart failed for:",
-                    human_gene,
-                    "\n"
-                )
-
-                return(
-                    data.frame(
-                        mmusculus_homolog_associated_gene_name =
-                            character(0)
-                    )
-                )
-            }
+        xml_query <- paste0(
+            '<?xml version="1.0" encoding="UTF-8"?>',
+            '<!DOCTYPE Query>',
+            '<Query virtualSchemaName="default" ',
+            'formatter="TSV" header="1" uniqueRows="1" ',
+            'datasetConfigVersion="0.6">',
+            '<Dataset name="hsapiens_gene_ensembl" ',
+            'interface="default">',
+            '<Filter name="hgnc_symbol" value="',
+            human_gene_xml,
+            '"/>',
+            '<Attribute name="mmusculus_homolog_associated_gene_name"/>',
+            '</Dataset></Query>'
         )
 
+        for (attempt in seq_len(max_attempts)) {
 
-        if(nrow(mouse_gene) == 0){
-
-            return(
-                data.frame(
-                    HumanGene = human_gene,
-                    MouseGene = NA_character_
-                )
+            response <- tryCatch(
+                httr::GET(
+                    biomart_url,
+                    query = list(query = xml_query),
+                    httr::timeout(60)
+                ),
+                error = function(e) e
             )
 
+            if (!inherits(response, "error") &&
+                httr::status_code(response) == 200) {
+
+                output <- httr::content(
+                    response,
+                    as = "text",
+                    encoding = "UTF-8"
+                )
+
+                # HTTP 200 can still contain a BioMart error
+                if (!grepl("Query ERROR", output, fixed = TRUE)) {
+
+                    genes <- tryCatch(
+                        read.delim(
+                            text = output,
+                            check.names = FALSE,
+                            stringsAsFactors = FALSE
+                        ),
+                        error = function(e) e
+                    )
+
+                    if (!inherits(genes, "error") &&
+                        ncol(genes) >= 1) {
+
+                        mouse_genes <- unique(
+                            trimws(as.character(genes[[1]]))
+                        )
+
+                        mouse_genes <- mouse_genes[
+                            !is.na(mouse_genes) &
+                            nzchar(mouse_genes)
+                        ]
+
+                        return(mouse_genes)
+                    }
+                }
+            }
+
+            cat(
+                "Retrying", human_gene,
+                "- attempt", attempt, "of", max_attempts, "\n"
+            )
+
+            if (attempt < max_attempts) {
+                Sys.sleep(2 * attempt)
+            }
         }
 
-
-        data.frame(
-            HumanGene = human_gene,
-            MouseGene =
-                mouse_gene$mmusculus_homolog_associated_gene_name
+        stop(
+            "BioMart query failed for ", human_gene,
+            " after ", max_attempts, " attempts. ",
+            "Stopping to avoid silently losing pathway genes."
         )
     }
-)
 
+    ########################################################
+    # CACHE SUCCESSFUL LOOKUPS
+    ########################################################
 
-ortholog_map <- dplyr::bind_rows(
-    ortholog_list
-)
-
-
-########################################################
-# REMOVE EMPTY MAPPINGS
-########################################################
-
-ortholog_map <- ortholog_map %>%
-    dplyr::filter(
-        !is.na(MouseGene),
-        MouseGene != ""
-    ) %>%
-    dplyr::distinct(
-        HumanGene,
-        MouseGene
-    )
-########################################################
-# ATTACH PATHWAY INFORMATION
-########################################################
-
-pathway_gene_map <- pathway_genes %>%
-    dplyr::left_join(
-        ortholog_map,
-        by = "HumanGene"
-    ) %>%
-    dplyr::filter(
-        !is.na(MouseGene),
-        MouseGene != ""
-    ) %>%
-    dplyr::transmute(
-        HumanGene = HumanGene,
-        AnalysisGene = MouseGene,
-        `Major Pathways` = `Major Pathways`
+    cache_file <- file.path(
+        output_dir,
+        "Ortholog_Query_Cache.rds"
     )
 
+    if (file.exists(cache_file)) {
+        ortholog_cache <- readRDS(cache_file)
+    } else {
+        ortholog_cache <- list()
+    }
 
-########################################################
-# SAVE HUMAN -> MOUSE ORTHOLOG MAP
-########################################################
+    human_genes <- unique(pathway_genes$HumanGene)
 
-write.csv(
-    pathway_gene_map,
-    "DESeq2_results/Heatmaps/Major_Pathways/Human_to_Mouse_Ortholog_Map.csv",
-    row.names = FALSE
-)
+    ortholog_list <- vector("list", length(human_genes))
 
+    for (i in seq_along(human_genes)) {
 
-########################################################
-# SAVE UNMAPPED HUMAN GENES
-########################################################
+        human_gene <- human_genes[i]
 
-unmapped_human_genes <- pathway_genes %>%
-    dplyr::anti_join(
-        ortholog_map,
-        by = "HumanGene"
+        if (human_gene %in% names(ortholog_cache)) {
+
+            mouse_genes <- ortholog_cache[[human_gene]]
+
+        } else {
+
+            mouse_genes <- get_mouse_ortholog(human_gene)
+
+            ortholog_cache[human_gene] <- list(mouse_genes)
+
+            saveRDS(ortholog_cache, cache_file)
+        }
+
+        ortholog_list[[i]] <- data.frame(
+            HumanGene = human_gene,
+            MouseGene = if (length(mouse_genes) > 0) {
+                mouse_genes
+            } else {
+                NA_character_
+            },
+            stringsAsFactors = FALSE
+        )
+
+        if (i %% 25 == 0 || i == length(human_genes)) {
+            cat(
+                "Ortholog mapping progress:",
+                i, "/", length(human_genes), "\n"
+            )
+        }
+    }
+
+    ortholog_map <- dplyr::bind_rows(ortholog_list)
+
+    ########################################################
+    # REMOVE EMPTY MAPPINGS
+    ########################################################
+
+    ortholog_map <- ortholog_map %>%
+        dplyr::filter(
+            !is.na(MouseGene),
+            MouseGene != ""
+        ) %>%
+        dplyr::distinct(HumanGene, MouseGene)
+
+    ########################################################
+    # ATTACH PATHWAY INFORMATION
+    ########################################################
+
+    pathway_gene_map <- pathway_genes %>%
+        dplyr::left_join(
+            ortholog_map,
+            by = "HumanGene"
+        ) %>%
+        dplyr::filter(
+            !is.na(MouseGene),
+            MouseGene != ""
+        ) %>%
+        dplyr::transmute(
+            HumanGene = HumanGene,
+            AnalysisGene = MouseGene,
+            `Major Pathways` = `Major Pathways`
+        )
+
+    ########################################################
+    # SAVE HUMAN -> MOUSE ORTHOLOG MAP
+    ########################################################
+
+    write.csv(
+        pathway_gene_map,
+        file.path(output_dir, "Human_to_Mouse_Ortholog_Map.csv"),
+        row.names = FALSE
     )
 
-write.csv(
-    unmapped_human_genes,
-    "DESeq2_results/Heatmaps/Major_Pathways/Unmapped_Human_Pathway_Genes.csv",
-    row.names = FALSE
-)
+    ########################################################
+    # SAVE UNMAPPED HUMAN GENES
+    ########################################################
 
+    unmapped_human_genes <- pathway_genes %>%
+        dplyr::anti_join(
+            ortholog_map,
+            by = "HumanGene"
+        )
 
-cat(
-    "\nHuman genes requested:",
-    length(unique(pathway_genes$HumanGene)),
-    "\n"
-)
+    write.csv(
+        unmapped_human_genes,
+        file.path(output_dir, "Unmapped_Human_Pathway_Genes.csv"),
+        row.names = FALSE
+    )
 
-cat(
-    "Human genes with mouse orthologs:",
-    length(unique(ortholog_map$HumanGene)),
-    "\n"
-)
+    ########################################################
+    # MAPPING SUMMARY
+    ########################################################
 
-cat(
-    "Unique mouse orthologs:",
-    length(unique(ortholog_map$MouseGene)),
-    "\n"
-)
+    cat(
+        "\nHuman genes requested:",
+        length(human_genes), "\n"
+    )
+
+    cat(
+        "Human genes with mouse orthologs:",
+        length(unique(ortholog_map$HumanGene)), "\n"
+    )
+
+    cat(
+        "Unique mouse orthologs:",
+        length(unique(ortholog_map$MouseGene)), "\n"
+    )
+
+    cat(
+        "Mouse orthologs present in filtered expression data:",
+        sum(
+            toupper(unique(ortholog_map$MouseGene)) %in%
+            toupper(rownames(vst_matrix))
+        ),
+        "\n"
+    )
+
+    if (nrow(ortholog_map) == 0) {
+        stop("No human-to-mouse orthologs were mapped.")
+    }
 }
 
 ############################################################
@@ -2035,7 +2244,3 @@ cat(
 cat(
     "\nResults saved in: DESeq2_results/\n"
 )
-
-
-
-
