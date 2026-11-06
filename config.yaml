@@ -56,3 +56,8 @@ enrichr_databases:
 comparisons:
   - group1: "HIV"
     group2: "CONTROL"
+
+# DESeq2 covariates
+covariates:
+  - AgeMonths
+  - Sex
