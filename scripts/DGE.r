@@ -1347,11 +1347,16 @@ run_comparison <- function(group1, group2){
     
     if(length(top_genes) >= 2){
     
-        # Keep only samples from the two groups being compared
-        comparison_samples <- rownames(metadata)[
-            metadata$Treatment %in% c(group1, group2)
-        ]
-    
+
+        # Keep group1 samples first, followed by group2.
+        # Preserve original metadata order within each group.
+      
+        comparison_samples <- c(
+          rownames(metadata)[metadata$Treatment == group1],
+          rownames(metadata)[metadata$Treatment == group2]
+        )
+      
+          
         # Subset expression matrix
         hm <- vst_matrix[
             top_genes,
@@ -1421,9 +1426,15 @@ run_comparison <- function(group1, group2){
     # HALLMARK HEATMAPS WITH SIGNIFICANCE MARKERS
     ########################################################
     
-    comparison_samples <- rownames(metadata)[
-        metadata$Treatment %in% c(group1, group2)
-    ]
+
+    # Keep group1 samples first, followed by group2.
+    # Preserve original metadata order within each group.
+
+    comparison_samples <- c(
+        rownames(metadata)[metadata$Treatment == group1],
+        rownames(metadata)[metadata$Treatment == group2]
+    )
+
     
     hallmark_dir <- file.path(
         "DESeq2_results/Heatmaps/Hallmark",
