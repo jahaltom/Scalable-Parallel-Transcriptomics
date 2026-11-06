@@ -31,7 +31,7 @@
 #     "pheatmap",
 #     "enrichR",
 #     "readxl",
-      "msigdbr"
+#      "msigdbr"
 # ))
 
 library(yaml)
@@ -95,7 +95,7 @@ library(EnhancedVolcano)
 library(clusterProfiler)
 library(enrichplot)
 library(enrichR)
-
+library(limma)
 
 ############################################################
 # 1. CREATE OUTPUT DIRECTORIES
@@ -142,6 +142,26 @@ metadata <- read.delim(
     stringsAsFactors = FALSE,
     check.names = FALSE
 )
+
+############################################################
+# STANDARDIZE AGE COLUMN
+############################################################
+
+if ("age (months)" %in% colnames(metadata)) {
+    colnames(metadata)[
+        colnames(metadata) == "age (months)"
+    ] <- "AgeMonths"
+}
+
+if (!"AgeMonths" %in% colnames(metadata)) {
+    stop("AgeMonths column is missing from metadata.")
+}
+
+metadata$AgeMonths <- as.numeric(metadata$AgeMonths)
+
+if (anyNA(metadata$AgeMonths)) {
+    stop("AgeMonths contains missing or non-numeric values.")
+}
 
 cat("\nMetadata:\n")
 print(metadata)
@@ -248,7 +268,30 @@ metadata <- metadata[
 # PREPARE DESEQ2 COVARIATES
 ############################################################
 
+
+############################################################
+# STANDARDIZE MODEL VARIABLES
+############################################################
+
 metadata$Treatment <- factor(metadata$Treatment)
+
+# Prevent uppercase/lowercase sex labels becoming
+# different factor levels.
+metadata$Sex <- factor(
+    toupper(trimws(as.character(metadata$Sex)))
+)
+
+# Batch is categorical, even if its labels are numeric.
+metadata$Batch <- factor(
+    trimws(as.character(metadata$Batch))
+)
+
+cat("\nSex distribution:\n")
+print(table(metadata$Sex, useNA = "ifany"))
+
+cat("\nBatch distribution:\n")
+print(table(metadata$Batch, useNA = "ifany"))
+
 
 # Verify all requested covariates exist
 missing_covariates <- setdiff(
@@ -446,31 +489,65 @@ write.table(
 # CREATE DESEQ2 OBJECT WITH CONFIGURABLE COVARIATES
 ############################################################
 
+
+############################################################
+# CHECK BATCH CONFOUNDING AND CREATE DESEQ2 OBJECT
+############################################################
+
+# Treatment-by-batch distribution
+batch_table <- table(
+    Treatment = metadata$Treatment,
+    Batch = metadata$Batch
+)
+
+cat("\nTreatment x Batch distribution:\n")
+print(batch_table)
+
+write.csv(
+    as.data.frame.matrix(batch_table),
+    "DESeq2_results/QC/Treatment_Batch_Table.csv"
+)
+
+# Construct model matrix before creating DESeq2 object
+design_matrix <- model.matrix(
+    DESEQ2_DESIGN,
+    data = metadata
+)
+
+model_rank <- qr(design_matrix)$rank
+model_columns <- ncol(design_matrix)
+
+cat("\nDESeq2 model rank:", model_rank, "\n")
+cat("Number of coefficients:", model_columns, "\n")
+
+if (model_rank < model_columns) {
+    stop(
+        "Design matrix is not full rank. ",
+        "Batch, Treatment, or other covariates are ",
+        "perfectly confounded. Review the batch table."
+    )
+}
+
+cat("\nDESeq2 model terms:\n")
+print(colnames(design_matrix))
+
+cat("\nDesign matrix condition number:\n")
+print(kappa(design_matrix))
+
+# Save design matrix for troubleshooting
+write.csv(
+    design_matrix,
+    "DESeq2_results/QC/Design_Matrix.csv"
+)
+
+# Create DESeq2 object
 dds <- DESeqDataSetFromMatrix(
     countData = round(counts_filtered),
     colData = metadata,
     design = DESEQ2_DESIGN
 )
 
-# Check that the design matrix is full rank
-design_matrix <- model.matrix(
-    DESEQ2_DESIGN,
-    data = as.data.frame(colData(dds))
-)
 
-if (qr(design_matrix)$rank < ncol(design_matrix)) {
-    stop(
-        "DESeq2 design matrix is not full rank. ",
-        "Covariates may be perfectly confounded with Treatment ",
-        "or with each other."
-    )
-}
-
-cat("\nDESeq2 design matrix dimensions:\n")
-print(dim(design_matrix))
-
-cat("\nDESeq2 model terms:\n")
-print(colnames(design_matrix))
 
 
 
@@ -541,6 +618,70 @@ write.table(
 )
 
 
+
+############################################################
+# BATCH-ADJUSTED VST FOR VISUALIZATION ONLY
+############################################################
+
+library(limma)
+
+vst_matrix_batch_adjusted <- NULL
+
+if ("Batch" %in% COVARIATES) {
+
+    # Preserve the modeled biological Treatment effects.
+    # Age and Sex are retained as covariates in the model.
+    visual_design <- model.matrix(
+        ~ AgeMonths + Sex + Treatment,
+        data = metadata
+    )
+
+    visual_full_design <- model.matrix(
+        ~ AgeMonths + Sex + Batch + Treatment,
+        data = metadata
+    )
+
+    if (qr(visual_full_design)$rank == ncol(visual_full_design)) {
+
+        vst_matrix_batch_adjusted <- limma::removeBatchEffect(
+            vst_matrix,
+            batch = metadata$Batch,
+            design = visual_design
+        )
+
+        write.table(
+            vst_matrix_batch_adjusted,
+            "DESeq2_results/VST_Batch_Adjusted_Visualization.txt",
+            sep = "\t",
+            quote = FALSE,
+            col.names = NA
+        )
+
+    } else {
+        warning(
+            "Skipping batch-adjusted visualization: ",
+            "batch and biological variables are confounded."
+        )
+    }
+}
+
+############################################################
+# SELECT MATRIX FOR HEATMAP VISUALIZATION
+############################################################
+
+heatmap_matrix <- if (!is.null(vst_matrix_batch_adjusted)) {
+    vst_matrix_batch_adjusted
+} else {
+    vst_matrix
+}
+
+cat("\nHeatmap matrix selected: ")
+
+if (!is.null(vst_matrix_batch_adjusted)) {
+    cat("Batch-adjusted VST\n")
+} else {
+    cat("Original VST (not batch-adjusted)\n")
+}
 
 ############################################################
 # HALLMARK PATHWAY HEATMAPS
@@ -666,6 +807,98 @@ write.csv(
     row.names = FALSE
 )
 
+
+############################################################
+# 21B. BATCH-ADJUSTED PCA
+############################################################
+
+if (!is.null(vst_matrix_batch_adjusted)) {
+
+    cat("\nGenerating batch-adjusted PCA...\n")
+
+    # Select the 500 most variable genes
+    gene_variances <- apply(
+        vst_matrix_batch_adjusted,
+        1,
+        var
+    )
+
+    top_pca_genes <- names(sort(
+        gene_variances,
+        decreasing = TRUE
+    ))[seq_len(min(500, length(gene_variances)))]
+
+    # PCA using batch-adjusted VST values
+    pca_adjusted <- prcomp(
+        t(vst_matrix_batch_adjusted[
+            top_pca_genes,
+            ,
+            drop = FALSE
+        ]),
+        center = TRUE,
+        scale. = FALSE
+    )
+
+    percent_var_adjusted <- round(
+        100 * pca_adjusted$sdev^2 /
+        sum(pca_adjusted$sdev^2),
+        1
+    )
+
+    # Ensure metadata matches PCA sample order
+    pca_samples <- rownames(pca_adjusted$x)
+
+    pca_adjusted_df <- data.frame(
+        sample = pca_samples,
+        PC1 = pca_adjusted$x[, 1],
+        PC2 = pca_adjusted$x[, 2],
+        Treatment = metadata[pca_samples, "Treatment"],
+        Batch = metadata[pca_samples, "Batch"],
+        row.names = NULL
+    )
+
+    write.csv(
+        pca_adjusted_df,
+        "DESeq2_results/PCA/PCA_Batch_Adjusted_Coordinates.csv",
+        row.names = FALSE
+    )
+
+    p_adjusted <- ggplot(
+        pca_adjusted_df,
+        aes(
+            x = PC1,
+            y = PC2,
+            color = Treatment
+        )
+    ) +
+        geom_point(size = 4) +
+        xlab(
+            paste0(
+                "PC1: ",
+                percent_var_adjusted[1],
+                "% variance"
+            )
+        ) +
+        ylab(
+            paste0(
+                "PC2: ",
+                percent_var_adjusted[2],
+                "% variance"
+            )
+        ) +
+        theme_bw() +
+        labs(
+            title = "PCA of Batch-Adjusted VST Expression"
+        )
+
+    ggsave(
+        "DESeq2_results/PCA/PCA_Batch_Adjusted.png",
+        p_adjusted,
+        width = 8,
+        height = 6,
+        dpi = 300
+    )
+}
 
 ############################################################
 # 22. SAMPLE CORRELATION HEATMAP
@@ -1358,11 +1591,13 @@ run_comparison <- function(group1, group2){
       
           
         # Subset expression matrix
-        hm <- vst_matrix[
+
+        hm <- heatmap_matrix[
             top_genes,
             comparison_samples,
             drop = FALSE
         ]
+
         
         ########################################################
         # USE GENE SYMBOLS AS HEATMAP ROW LABELS
@@ -1462,11 +1697,13 @@ run_comparison <- function(group1, group2){
     
         if (length(matched_genes) < 2) next
     
-        hm <- vst_matrix[
+
+        hm <- heatmap_matrix[
             matched_genes,
             comparison_samples,
             drop = FALSE
         ]
+ 
     
         # Remove zero-variance genes
         keep <- apply(hm, 1, var) > 0
@@ -1540,12 +1777,12 @@ run_comparison <- function(group1, group2){
     # MAJOR PATHWAY HEATMAPS
     ########################################################
     
-    comparison_samples <- rownames(metadata)[
-        metadata$Treatment %in% c(
-            group1,
-            group2
-        )
-    ]
+
+    comparison_samples <- c(
+        rownames(metadata)[metadata$Treatment == group1],
+        rownames(metadata)[metadata$Treatment == group2]
+    )
+
     
     
     ########################################################
@@ -1654,11 +1891,13 @@ run_comparison <- function(group1, group2){
         # SUBSET VST MATRIX
         ####################################################
     
-        hm_pathway <- vst_matrix[
+
+        hm_pathway <- heatmap_matrix[
             pathway_matches$Gene,
             comparison_samples,
             drop = FALSE
         ]
+
     
     
         ####################################################
