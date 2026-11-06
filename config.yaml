@@ -30,27 +30,27 @@ salmon:
 ##########################################
 # DESeq2
 ##########################################
-#OrgDb: org.Mm.eg.db
-OrgDb: org.Hs.eg.db
+OrgDb: org.Mm.eg.db
+#OrgDb: org.Hs.eg.db
 
 
 
 #Gene column in Gene_Level_Raw_Counts.txt
 gene_id_type: SYMBOL # ENSEMBL
 
-#enrichr_databases:
-#  - KEGG_2021_Mouse
-#  - GO_Biological_Process_2023
-# - GO_Cellular_Component_2023
-# - GO_Molecular_Function_2023
-
 enrichr_databases:
-  - KEGG_2021_Human
-  - WikiPathway_2023_Human
-  - Reactome_2022
+  - KEGG_2021_Mouse
   - GO_Biological_Process_2023
   - GO_Cellular_Component_2023
   - GO_Molecular_Function_2023
+
+#enrichr_databases:
+#  - KEGG_2021_Human
+#  - WikiPathway_2023_Human
+#  - Reactome_2022
+#  - GO_Biological_Process_2023
+#  - GO_Cellular_Component_2023
+#  - GO_Molecular_Function_2023
 
 # Treatment column in metadata.txt
 comparisons:
@@ -58,6 +58,7 @@ comparisons:
     group2: "CONTROL"
 
 # DESeq2 covariates
+# To run without covariates: covariates: []
 covariates:
   - AgeMonths
   - Sex
