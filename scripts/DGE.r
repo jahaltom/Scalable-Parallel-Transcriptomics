@@ -424,6 +424,15 @@ p <- ggplot(
         title = "Raw Library Size",
         x = "Sample",
         y = "Total Raw Counts"
+    ) +
+    theme(
+        text = element_text(size = 9),
+        axis.text.y = element_text(size = 6),
+        axis.text.x = element_text(size = 8),
+        axis.title = element_text(size = 10),
+        plot.title = element_text(size = 12),
+        legend.text = element_text(size = 8),
+        legend.title = element_text(size = 9)
     )
 
 ggsave(
@@ -928,7 +937,13 @@ pheatmap(
     sample_cor,
     annotation_col = annotation,
     annotation_row = annotation,
-    main = "Sample Correlation"
+    main = "Sample Correlation",
+    fontsize = 7,
+    fontsize_row = 5,
+    fontsize_col = 5,
+    fontsize_main = 10,
+    fontsize_legend = 7,
+    fontsize_annotation = 7
 )
 
 dev.off()
@@ -958,7 +973,13 @@ pheatmap(
     sample_dist_matrix,
     annotation_col = annotation,
     annotation_row = annotation,
-    main = "Sample-to-Sample Distance"
+    main = "Sample-to-Sample Distance",
+    fontsize = 7,
+    fontsize_row = 5,
+    fontsize_col = 5,
+    fontsize_main = 10,
+    fontsize_legend = 7,
+    fontsize_annotation = 7
 )
 
 dev.off()
